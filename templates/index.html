@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskVault — Smart RESTful Task Management Dashboard</title>
+    <meta name="description" content="TaskVault is a modern full-stack task management dashboard powered by Flask and vanilla JavaScript Fetch API. Cognifyz Internship Task 5.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234F46E5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'%3E%3C/path%3E%3Cpolyline points='9 16 11 18 15 14'%3E%3C/polyline%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        <polyline points="9 16 11 18 15 14"></polyline>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title-row">
+                        <h1 class="brand-title">TaskVault</h1>
+                        <span class="badge-project">Task 5 &bull; REST API</span>
+                    </div>
+                    <p class="brand-tagline">Flask &amp; Vanilla JS Task Management Engine</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="api-status-badge" id="apiStatusBadge" title="Flask REST API Connection Status">
+                    <span class="status-dot"></span>
+                    <span class="status-label" id="apiStatusText">Connected</span>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-icon" id="btnRefresh" title="Refresh Tasks from API" aria-label="Refresh Tasks">
+                    <svg class="icon-refresh" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    <span>Refresh</span>
+                </button>
+
+                <button type="button" class="btn btn-primary" id="btnOpenCreateModal" aria-label="Create New Task">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>New Task</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        <!-- Interactive Metrics Summary Bar -->
+        <section class="stats-section" aria-label="Task Statistics">
+            <div class="stat-card" data-filter="all" id="statCardTotal" tabindex="0" role="button" title="Show all tasks">
+                <div class="stat-icon stat-icon-indigo">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Tasks</span>
+                    <span class="stat-value" id="countTotal">0</span>
+                </div>
+                <div class="stat-badge">All records</div>
+            </div>
+
+            <div class="stat-card" data-filter="Pending" id="statCardPending" tabindex="0" role="button" title="Filter by Pending">
+                <div class="stat-icon stat-icon-amber">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Pending</span>
+                    <span class="stat-value" id="countPending">0</span>
+                </div>
+                <div class="stat-badge">Awaiting</div>
+            </div>
+
+            <div class="stat-card" data-filter="In Progress" id="statCardInProgress" tabindex="0" role="button" title="Filter by In Progress">
+                <div class="stat-icon stat-icon-teal">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">In Progress</span>
+                    <span class="stat-value" id="countInProgress">0</span>
+                </div>
+                <div class="stat-badge">Active</div>
+            </div>
+
+            <div class="stat-card" data-filter="Completed" id="statCardCompleted" tabindex="0" role="button" title="Filter by Completed">
+                <div class="stat-icon stat-icon-emerald">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-value" id="countCompleted">0</span>
+                </div>
+                <div class="stat-badge">Done</div>
+            </div>
+        </section>
+
+        <!-- Controls Toolbar: Search & Filters -->
+        <section class="toolbar-section">
+            <div class="search-box">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search tasks by title..." autocomplete="off" aria-label="Search tasks by title">
+                <button type="button" class="btn-clear-search hidden" id="btnClearSearch" aria-label="Clear search input">&times;</button>
+            </div>
+
+            <div class="filter-controls">
+                <div class="select-group">
+                    <label for="statusFilter" class="control-label">Status</label>
+                    <select id="statusFilter" class="form-select" aria-label="Filter by Status">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+
+                <div class="select-group">
+                    <label for="priorityFilter" class="control-label">Priority</label>
+                    <select id="priorityFilter" class="form-select" aria-label="Filter by Priority">
+                        <option value="all">All Priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+
+                <div class="select-group">
+                    <label for="sortBy" class="control-label">Sort</label>
+                    <select id="sortBy" class="form-select" aria-label="Sort Tasks">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="priority-desc">Priority: High &rarr; Low</option>
+                        <option value="title-asc">Title: A &rarr; Z</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Active Filter Pills & Results Count -->
+        <div class="filter-status-bar" id="filterStatusBar">
+            <div class="results-count-text">
+                Showing <strong id="visibleTaskCount">0</strong> of <span id="totalTaskCount">0</span> tasks
+            </div>
+            <div class="active-filter-tags" id="activeFilterTags"></div>
+            <button type="button" class="btn-reset-filters hidden" id="btnResetFilters">Reset Filters</button>
+        </div>
+
+        <!-- Task Display Area -->
+        <section class="task-grid-section" aria-label="Task Grid">
+            <!-- Loading Skeletons -->
+            <div class="skeleton-grid" id="skeletonGrid">
+                <div class="skeleton-card">
+                    <div class="skeleton-line line-header"></div>
+                    <div class="skeleton-line line-title"></div>
+                    <div class="skeleton-line line-desc"></div>
+                    <div class="skeleton-line line-desc short"></div>
+                    <div class="skeleton-line line-footer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-line line-header"></div>
+                    <div class="skeleton-line line-title"></div>
+                    <div class="skeleton-line line-desc"></div>
+                    <div class="skeleton-line line-desc short"></div>
+                    <div class="skeleton-line line-footer"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-line line-header"></div>
+                    <div class="skeleton-line line-title"></div>
+                    <div class="skeleton-line line-desc"></div>
+                    <div class="skeleton-line line-desc short"></div>
+                    <div class="skeleton-line line-footer"></div>
+                </div>
+            </div>
+
+            <!-- Real Tasks Grid -->
+            <div class="task-grid hidden" id="taskGrid"></div>
+
+            <!-- Empty State Display -->
+            <div class="empty-state hidden" id="emptyState">
+                <div class="empty-state-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <path d="M7 15h0M2 9.5h20"></path>
+                    </svg>
+                </div>
+                <h3 class="empty-state-title" id="emptyStateTitle">No tasks found</h3>
+                <p class="empty-state-desc" id="emptyStateDesc">There are no tasks matching your current search or filter criteria.</p>
+                <button type="button" class="btn btn-primary" id="btnEmptyAction">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Create a Task</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create / Edit Task Modal -->
+    <div class="modal-overlay hidden" id="taskModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title" id="modalTitle">Create New Task</h2>
+                    <p class="modal-subtitle" id="modalSubtitle">Fill in the task details to record it into TaskVault.</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="btnCloseModal" aria-label="Close modal">&times;</button>
+            </div>
+
+            <form id="taskForm" novalidate>
+                <input type="hidden" id="taskIdInput">
+
+                <!-- Alert box for client/server errors -->
+                <div class="form-alert hidden" id="modalAlert" role="alert"></div>
+
+                <div class="form-group">
+                    <div class="form-label-row">
+                        <label for="taskTitleInput" class="form-label">Task Title <span class="required-star">*</span></label>
+                        <span class="char-counter" id="titleCharCounter">0 / 150</span>
+                    </div>
+                    <input type="text" id="taskTitleInput" class="form-input" placeholder="e.g. Build RESTful API Endpoints" maxlength="150" required autocomplete="off">
+                    <span class="field-error" id="titleFieldError"></span>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="taskPriorityInput" class="form-label">Priority <span class="required-star">*</span></label>
+                        <select id="taskPriorityInput" class="form-select form-input">
+                            <option value="Low">Low Priority</option>
+                            <option value="Medium" selected>Medium Priority</option>
+                            <option value="High">High Priority</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskStatusInput" class="form-label">Status <span class="required-star">*</span></label>
+                        <select id="taskStatusInput" class="form-select form-input">
+                            <option value="Pending" selected>Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-label-row">
+                        <label for="taskDescInput" class="form-label">Description <span class="optional-badge">(optional)</span></label>
+                        <span class="char-counter" id="descCharCounter">0 / 500</span>
+                    </div>
+                    <textarea id="taskDescInput" class="form-textarea" rows="3" maxlength="500" placeholder="Provide additional context, objectives, or acceptance criteria..."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="btnCancelModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitTask">
+                        <span class="btn-spinner hidden" id="btnSubmitSpinner"></span>
+                        <span id="btnSubmitText">Save Task</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Details Modal (fetches via GET /api/tasks/<id>) -->
+    <div class="modal-overlay hidden" id="detailsModal" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-header-with-badge">
+                    <span class="detail-id-tag" id="detailsIdTag">ID</span>
+                    <h2 class="modal-title" id="detailsTitle">Task Details</h2>
+                </div>
+                <button type="button" class="btn-close-modal" id="btnCloseDetailsModal" aria-label="Close modal">&times;</button>
+            </div>
+
+            <div class="modal-body details-body" id="detailsContent">
+                <div class="details-badges-row">
+                    <div id="detailsPriorityBadge"></div>
+                    <div id="detailsStatusBadge"></div>
+                </div>
+
+                <div class="details-block">
+                    <label class="details-label">Description</label>
+                    <div class="details-desc-box" id="detailsDesc"></div>
+                </div>
+
+                <div class="details-meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Created At</span>
+                        <span class="meta-value" id="detailsCreatedAt">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Last Updated</span>
+                        <span class="meta-value" id="detailsUpdatedAt">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Task Identifier</span>
+                        <span class="meta-value code-font" id="detailsFullId">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="btnCloseDetailsBtn">Close</button>
+                <button type="button" class="btn btn-primary" id="btnEditFromDetails">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                    <span>Edit Task</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay hidden" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="modal-dialog modal-dialog-sm">
+            <div class="modal-header">
+                <div class="danger-header-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="modal-title text-danger" id="deleteModalTitle">Delete Task</h2>
+                    <p class="modal-subtitle">Are you sure you want to permanently delete this task?</p>
+                </div>
+            </div>
+
+            <div class="delete-content">
+                <div class="delete-task-preview" id="deleteTaskTitlePreview"></div>
+                <p class="delete-warning-text">This action cannot be undone. It will remove the record from <code>data/tasks.json</code> via <code>DELETE /api/tasks/&lt;id&gt;</code>.</p>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="btnCancelDelete">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+                    <span class="btn-spinner hidden" id="btnDeleteSpinner"></span>
+                    <span id="btnDeleteText">Delete Task</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Notification Stack -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
